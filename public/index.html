@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload File dengan Fetch API</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+    }
+    
+    input[type="file"] {
+      margin-bottom: 16px;
+    }
+    
+    button {
+      padding: 8px 16px;
+      cursor: pointer;
+    }
+    
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+<body>
+  <h1>Upload File (Fetch API)</h1>
+  <form id="uploadForm">
+    <label for="fileInput">Pilih file:</label>
+    <input type="file" id="fileInput" name="file" required />
+    <button type="submit">Upload</button>
+  </form>
+  <h2>Respon JSON:</h2>
+  <pre id="responseBox">{}</pre>
+  <script>
+    const form = document.getElementById('uploadForm');
+    const responseBox = document.getElementById('responseBox');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('fileInput');
+      if (!fileInput.files.length) {
+        alert('Silakan pilih file terlebih dahulu.');
+        return;
+      }
+      const endpoint = '/upload'
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!res.ok) {
+          throw new Error('Upload gagal, status: ' + res.status);
+        }
+        
+        const data = await res.json();
+        fetch(data.url, { method: 'HEAD' })
+        responseBox.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        responseBox.textContent = JSON.stringify({ error: true, message: err.message },
+          null,
+          2
+        );
+      }
+    });
+  </script>
+</body>
+</html>
