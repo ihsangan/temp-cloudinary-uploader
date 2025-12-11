@@ -2,7 +2,7 @@ FROM oven/bun:alpine AS builder
 WORKDIR /app
 COPY . .
 RUN bun install --frozen-lockfile --production
-RUN bun build --compile --minify main.ts --outfile run
+RUN bun run build
 
 FROM alpine:3.22 AS server
 RUN apk add --no-cache libgcc libstdc++

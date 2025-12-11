@@ -1,8 +1,9 @@
 {
   "name": "temp-cloudinary-uploader",
   "scripts": {
-    "dev": "bun run --hot main.ts",
-    "start": "bun run main.ts"
+    "dev": "bun run --hot src/main.ts",
+    "start": "bun run src/main.ts",
+    "build": "bun build --compile --minify src/main.ts --outfile run"
   },
   "dependencies": {
     "hono": "^4.10.7"
