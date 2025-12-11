@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import uploadApp from './upload'
-import indexHtml from './public/index.html' with { type: 'text' }
+import indexHtml from '../public/index.html' with { type: 'text' }
 
 const PORT: number = Number(process.env.PORT) || 3300
 const app = new Hono()
