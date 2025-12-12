@@ -7,13 +7,20 @@ uploadApp.post('/', async (c) => {
   const startTime = Date.now()
   const body: Record<string, any> = await c.req.parseBody()
   const file: File | null = body['file']
+  const res: Res = {}
   
   if (!file || typeof file === 'string') {
-    return c.json({ success: false, message: 'No file uploaded.' }, 400)
+    res.success = false
+    res.message = 'No file uploaded.'
+    res.processingTime = Date.now() - startTime
+    return c.json(res, 400)
   }
   
   if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-    return c.json({ success: false, message: 'File is not an image or video'}, 415)
+    res.success = false
+    res.message =  'File is not an image or video.'
+    res.processingTime = Date.now() - startTime
+    return c.json(res, 415)
   }
   /* // CLOUDFLARE TURNSTILE VALIDATION
   const turnstileToken: string | undefined = body['cf-turnstile-response']
@@ -47,19 +54,52 @@ uploadApp.post('/', async (c) => {
   }
   */
   try {
-    const res = await uploadFile(file, startTime)
-    let url = res.secure_url.replace(`v${res.version}/`, '')
-
-    return c.json({
-      success: true,
-      url,
-      processingTime: Date.now() - startTime
-    }, 200)
+    const apiRes = await uploadFile(file, startTime)
+    const ver = `v${apiRes.version}/`
+    const url = apiRes.secure_url.replace(ver, '')
+    res.url = url
+    
+    if (apiRes.resource_type === 'image') {
+      res.optimizedUrl.avif = res.url.replace(ver, 'q_auto,f_avif/')
+      res.optimizedUrl.webp = res.url.replace(ver, 'q_auto,f_webp/')
+      res.cacheUrl.wsrv = res.optimizedUrl.webp.replace('//', '//wsrv.nl/?url=')
+      res.cacheUrl.wp = res.optimizedUrl.webp.replace('//', '//i3.wp.com/')
+    }
+    
+    if (apiRes.resource_type === 'video' && apiRes.format !== 'webm') {
+      res.optimizedUrl.webm = res.url.replace(apiRes.format, 'webm')
+    }
+    
+    if (apiRes.resource_type === 'video' && apiRes.format === 'webm') {
+      res.optimizedUrl.webm = res.url.replace(ver, 'q_auto/')
+    }
+    
+    res.processingTime = Date.now() - startTime
+    return c.json(res, 200)
   }
   catch (err) {
     console.error('Error uploading:', err)
-    return c.json({ success: false, message: 'Failed to upload.' }, 500)
+    res.success = false
+    res.message = 'Failed to upload.'
+    res.processingTime = Date.now() - startTime
+    return c.json(res, 500)
   }
 })
+
+interface Res {
+  success: boolean
+  url?: string
+  optimizedUrl?: {
+    avif?: string
+    webm?: string
+    webp?: string
+  }
+  message?: string
+  cacheUrl?: {
+    wsrv: string
+    wp: string
+  }
+  processingTime: number
+}
 
 export default uploadApp
