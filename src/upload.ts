@@ -12,7 +12,7 @@ uploadApp.post('/', async (c) => {
     return c.json({ success: false, message: 'No file uploaded.' }, 400)
   }
   
-  if (!file.type.startsWith('image/') || !file.type.startsWith('video/')) {
+  if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
     return c.json({ success: false, message: 'File is not an image or video'}, 415)
   }
   /* // CLOUDFLARE TURNSTILE VALIDATION
