@@ -60,8 +60,8 @@ uploadApp.post('/', async (c) => {
     res.url = url
     
     if (apiRes.resource_type === 'image') {
-      res.optimizedUrl.avif = res.url.replace(ver, 'q_auto,f_avif/')
-      res.optimizedUrl.webp = res.url.replace(ver, 'q_auto,f_webp/')
+      res.optimizedUrl.avif = apiRes.secure_url.replace(ver, 'q_auto,f_avif/')
+      res.optimizedUrl.webp = apiRes.secure_url.replace(ver, 'q_auto,f_webp/')
       res.cacheUrl.wsrv = res.optimizedUrl.webp.replace('//', '//wsrv.nl/?url=')
       res.cacheUrl.wp = res.optimizedUrl.webp.replace('//', '//i3.wp.com/')
     }
