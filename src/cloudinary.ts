@@ -67,14 +67,14 @@ interface CloudinaryUploadApiResponse {
   etag: string;
   created_at: string;
   tags: string[];
-  moderation?: any;
+  moderation?: string[];
   folder?: string | null;
   asset_folder?: string | null;
   original_filename: string;
   original_extension: string;
   api_key: string;
   pages: number;
-  eager?: any;
+  eager?: string;
   is_animated?: boolean;
   frame_rate?: number;
   duration?: number;
