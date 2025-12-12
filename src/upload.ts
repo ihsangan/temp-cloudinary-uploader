@@ -8,6 +8,8 @@ uploadApp.post('/', async (c) => {
   const body: Record<string, any> = await c.req.parseBody()
   const file: File | null = body['file']
   const res: Res = {}
+  res.optimizedUrl = {}
+  res.cacheUrl = {}
   
   if (!file || typeof file === 'string') {
     res.success = false
