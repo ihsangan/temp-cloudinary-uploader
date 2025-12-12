@@ -1,15 +1,19 @@
-import { Hono, Context } from 'hono'
+import { Hono } from 'hono'
 import uploadFile from './cloudinary'
 
 const uploadApp = new Hono()
 
-uploadApp.post('/', async (c: Context) => {
+uploadApp.post('/', async (c) => {
   const startTime = Date.now()
   const body: Record<string, any> = await c.req.parseBody()
   const file: File | null = body['file']
   
   if (!file || typeof file === 'string') {
     return c.json({ success: false, message: 'No file uploaded.' }, 400)
+  }
+  
+  if (!file.type.startsWith('image/') || !file.type.startsWith('video/')) {
+    return c.json({ success: false, message: 'File is not an image or video'}, 415)
   }
   /* // CLOUDFLARE TURNSTILE VALIDATION
   const turnstileToken: string | undefined = body['cf-turnstile-response']
@@ -47,6 +51,7 @@ uploadApp.post('/', async (c: Context) => {
     let url = res.secure_url.replace(`v${res.version}/`, '')
 
     return c.json({
+      success: true,
       url,
       processingTime: Date.now() - startTime
     }, 200)
