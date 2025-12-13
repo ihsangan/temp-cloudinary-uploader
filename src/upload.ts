@@ -69,7 +69,7 @@ uploadApp.post('/', async (c) => {
       }
       res.cacheUrl = {
         wsrv: res.optimizedUrl.webp.replace('//', '//wsrv.nl/?url='),
-        wp: res.cacheUrl.wp = res.optimizedUrl.webp.replace('//', '//i3.wp.com/')
+        wp: res.optimizedUrl.webp.replace('//', '//i3.wp.com/')
       }
     }
     
