@@ -7,9 +7,10 @@ uploadApp.post('/', async (c) => {
   const startTime = Date.now()
   const body: Record<string, any> = await c.req.parseBody()
   const file: File | null = body['file']
-  const res: Res = {}
-  res.optimizedUrl = {}
-  res.cacheUrl = {}
+  const res: Res = {
+    success: true,
+    processingTime: 0
+  }
   
   if (!file || typeof file === 'string') {
     res.success = false
@@ -62,18 +63,22 @@ uploadApp.post('/', async (c) => {
     res.url = url
     
     if (apiRes.resource_type === 'image') {
-      res.optimizedUrl.avif = apiRes.secure_url.replace(ver, 'q_auto,f_avif/')
-      res.optimizedUrl.webp = apiRes.secure_url.replace(ver, 'q_auto,f_webp/')
-      res.cacheUrl.wsrv = res.optimizedUrl.webp.replace('//', '//wsrv.nl/?url=')
-      res.cacheUrl.wp = res.optimizedUrl.webp.replace('//', '//i3.wp.com/')
+      res.optimizedUrl = {
+        avif: apiRes.secure_url.replace(ver, 'q_auto,f_avif/'),
+        webp:apiRes.secure_url.replace(ver, 'q_auto,f_webp/')
+      }
+      res.cacheUrl = {
+        wsrv: res.optimizedUrl.webp.replace('//', '//wsrv.nl/?url='),
+        wp: res.cacheUrl.wp = res.optimizedUrl.webp.replace('//', '//i3.wp.com/')
+      }
     }
     
     if (apiRes.resource_type === 'video' && apiRes.format !== 'webm') {
-      res.optimizedUrl.webm = res.url.replace(apiRes.format, 'webm')
+      res.optimizedUrl = { webm: res.url.replace(apiRes.format, 'webm') }
     }
     
     if (apiRes.resource_type === 'video' && apiRes.format === 'webm') {
-      res.optimizedUrl.webm = res.url.replace(ver, 'q_auto/')
+      res.optimizedUrl = { webm: apiRes.secure_url.replace(ver, 'q_auto/') }
     }
     
     res.processingTime = Date.now() - startTime
