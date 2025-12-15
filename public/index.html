@@ -1,61 +1,226 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Upload File dengan Fetch API</title>
+  <title>Cloudinary File Uploader (Hono + Bun)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Konfigurasi Tailwind CSS untuk menggunakan font Inter -->
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+
     body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 40px auto;
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
     }
     
-    label {
-      display: block;
-      margin-bottom: 8px;
+    .text-link {
+      color: #1d4ed8;
+      text-decoration: none;
+      word-break: break-all;
     }
     
-    input[type="file"] {
-      margin-bottom: 16px;
-    }
-    
-    button {
-      padding: 8px 16px;
-      cursor: pointer;
-    }
-    
-    pre {
-      background: #f4f4f4;
-      padding: 10px;
-      border-radius: 4px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
+    .text-link:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
-<body>
-  <h1>Upload File (Fetch API)</h1>
-  <form id="uploadForm">
-    <label for="fileInput">Pilih file:</label>
-    <input type="file" id="fileInput" name="file" required />
-    <button type="submit">Upload</button>
-  </form>
-  <h2>Respon JSON:</h2>
-  <pre id="responseBox">{}</pre>
+
+<body class="p-4 sm:p-8">
+  
+  <!-- Kontainer Utama -->
+  <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl">
+    <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b pb-3">Cloudinary File Uploader</h1>
+    <p class="text-gray-500 mb-8">Hanya mendukung file gambar (JPEG, PNG, dll) dan video.</p>
+    
+    <!-- Formulir Upload -->
+    <form id="uploadForm" class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4">
+        <label for="fileInput" class="block text-lg font-medium text-gray-700 w-full sm:w-1/4">Pilih File</label>
+        <input type="file" id="fileInput" name="file" required class="w-full sm:w-3/4 file:mr-4 file:py-2 file:px-4
+            file:rounded-full file:border-0
+            file:text-sm file:font-semibold
+            file:bg-blue-50 file:text-blue-700
+            hover:file:bg-blue-100 cursor-pointer transition duration-150" />
+      </div>
+      
+      <button type="submit" id="submitButton" class="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+        <span id="buttonText">Upload Sekarang</span>
+        <svg id="loadingSpinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </button>
+    </form>
+    
+    <!-- Kotak Pesan Status/Error -->
+    <div id="messageBox" class="mt-6 p-4 rounded-lg hidden" role="alert">
+      <p id="messageText" class="font-medium"></p>
+    </div>
+    
+    <!-- Bagian Hasil dan Pratinjau -->
+    <div id="resultContainer" class="mt-10 border-t pt-8 hidden">
+      <h2 class="text-2xl font-bold text-gray-800 mb-6">Hasil Upload</h2>
+      
+      <!-- Pratinjau Media -->
+      <div id="mediaPreview" class="mb-6 p-4 bg-gray-100 rounded-lg flex justify-center items-center">
+        <!-- Media akan disisipkan di sini -->
+        <p class="text-gray-500">Pratinjau media muncul di sini.</p>
+      </div>
+      
+      <!-- Detail URL -->
+      <div id="urlDetails" class="space-y-4">
+        <!-- Detail akan disisipkan di sini -->
+      </div>
+      
+      <!-- Waktu Pemrosesan -->
+      <p class="mt-6 text-sm text-gray-500">
+        Waktu Pemrosesan Backend: <span id="processingTime" class="font-semibold text-gray-700">0 ms</span>
+      </p>
+      
+      <!-- Respon JSON Mentah -->
+      <h3 class="text-xl font-semibold text-gray-700 mt-8 mb-4">Respon JSON Lengkap:</h3>
+      <pre id="responseBox" class="bg-gray-800 text-white p-4 rounded-lg text-sm overflow-x-auto">{}</pre>
+    </div>
+    
+  </div>
+  
   <script>
+    // Konstanta Elemen DOM
     const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const submitButton = document.getElementById('submitButton');
+    const buttonText = document.getElementById('buttonText');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const messageBox = document.getElementById('messageBox');
+    const messageText = document.getElementById('messageText');
+    const resultContainer = document.getElementById('resultContainer');
+    const mediaPreview = document.getElementById('mediaPreview');
+    const urlDetails = document.getElementById('urlDetails');
     const responseBox = document.getElementById('responseBox');
+    const processingTimeSpan = document.getElementById('processingTime');
+    
+    // Endpoint API
+    const endpoint =  '/upload';
+    
+    // Fungsi utilitas untuk menampilkan pesan
+    function displayMessage(type, message) {
+      // type: 'success', 'error', 'info'
+      messageBox.classList.remove('hidden', 'bg-red-100', 'bg-green-100', 'bg-blue-100', 'text-red-700', 'text-green-700', 'text-blue-700');
+      
+      if (type === 'error') {
+        messageBox.classList.add('bg-red-100', 'text-red-700');
+      } else if (type === 'success') {
+        messageBox.classList.add('bg-green-100', 'text-green-700');
+      } else {
+        messageBox.classList.add('bg-blue-100', 'text-blue-700');
+      }
+      
+      messageText.textContent = message;
+    }
+    
+    // Fungsi untuk mengatur status loading
+    function setLoading(isLoading) {
+      submitButton.disabled = isLoading;
+      if (isLoading) {
+        buttonText.textContent = 'Mengunggah...';
+        loadingSpinner.classList.remove('hidden');
+      } else {
+        buttonText.textContent = 'Upload Sekarang';
+        loadingSpinner.classList.add('hidden');
+      }
+    }
+    
+    // Fungsi untuk membuat elemen detail URL yang dapat disalin
+    function createUrlDetail(title, url) {
+      const urlElement = document.createElement('div');
+      urlElement.className = 'border p-3 rounded-lg bg-gray-50';
+      urlElement.innerHTML = `
+            <p class="font-medium text-gray-700 mb-1">${title}</p>
+            <a href="${url}" target="_blank" class="text-link text-sm">${url}</a>
+            <button 
+                data-url="${url}"
+                class="copy-btn float-right text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 py-1 px-2 rounded transition duration-150"
+            >
+                Salin
+            </button>
+        `;
+      return urlElement;
+    }
+    
+    // Fungsi untuk menampilkan pratinjau media
+    function renderMediaPreview(file, data) {
+      mediaPreview.innerHTML = '';
+      mediaPreview.classList.remove('p-4'); // Hapus padding default untuk media
+      const mediaType = file.type.split('/')[0];
+      
+      if (mediaType === 'image') {
+        // Gunakan URL yang dioptimalkan (webp) untuk pratinjau
+        const img = document.createElement('img');
+        img.src = data.optimizedUrl?.webp || data.url;
+        img.alt = 'Pratinjau Gambar Upload';
+        img.className = 'max-w-full h-auto rounded-lg shadow-lg max-h-96 object-contain';
+        mediaPreview.appendChild(img);
+        
+      } else if (mediaType === 'video') {
+        // Gunakan elemen video HTML5
+        const video = document.createElement('video');
+        video.src = data.url;
+        video.controls = true;
+        video.className = 'w-full max-h-96 rounded-lg shadow-lg';
+        video.preload = 'metadata'; // Untuk memuat metadata tanpa seluruh video
+        mediaPreview.appendChild(video);
+      } else {
+        mediaPreview.classList.add('p-4');
+        mediaPreview.innerHTML = `<p class="text-gray-500">Tipe file (${file.type}) tidak memiliki pratinjau langsung.</p>`;
+      }
+    }
+    
+    // Event listener untuk tombol Salin
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.classList.contains('copy-btn')) {
+        const urlToCopy = e.target.getAttribute('data-url');
+        try {
+          // Gunakan execCommand('copy') sebagai fallback yang lebih kompatibel di lingkungan iframe
+          const tempInput = document.createElement('textarea');
+          tempInput.value = urlToCopy;
+          document.body.appendChild(tempInput);
+          tempInput.select();
+          document.execCommand('copy');
+          document.body.removeChild(tempInput);
+          
+          e.target.textContent = 'Tersalin!';
+          setTimeout(() => { e.target.textContent = 'Salin'; }, 2000);
+        } catch (err) {
+          console.error('Gagal menyalin:', err);
+          displayMessage('error', 'Gagal menyalin URL (gunakan copy manual).');
+        }
+      }
+    });
+    
+    // Event listener utama untuk submit form
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const fileInput = document.getElementById('fileInput');
+      
+      // Reset tampilan
+      messageBox.classList.add('hidden');
+      resultContainer.classList.add('hidden');
+      urlDetails.innerHTML = '';
+      mediaPreview.classList.add('p-4');
+      mediaPreview.innerHTML = `<p class="text-gray-500">Pratinjau media muncul di sini.</p>`;
+      responseBox.textContent = '{}';
+      
       if (!fileInput.files.length) {
-        alert('Silakan pilih file terlebih dahulu.');
+        displayMessage('error', 'Silakan pilih file terlebih dahulu.');
         return;
       }
-      const endpoint = '/upload'
+      
+      const selectedFile = fileInput.files[0];
+      setLoading(true);
+      
       const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
+      formData.append('file', selectedFile);
       
       try {
         const res = await fetch(endpoint, {
@@ -63,20 +228,52 @@
           body: formData
         });
         
-        if (!res.ok) {
-          throw new Error('Upload gagal, status: ' + res.status);
+        const data = await res.json();
+        responseBox.textContent = JSON.stringify(data, null, 2);
+        
+        if (!res.ok || !data.success) {
+          const errorMessage = data.message || `Upload gagal. Status: ${res.status}`;
+          throw new Error(errorMessage);
         }
         
-        const data = await res.json();
-        fetch(data.url, { method: 'HEAD' })
-        responseBox.textContent = JSON.stringify(data, null, 2);
+        // --- Sukses ---
+        displayMessage('success', 'File berhasil diunggah!');
+        resultContainer.classList.remove('hidden');
+        processingTimeSpan.textContent = `${data.processingTime.toLocaleString()} ms`;
+        
+        // 1. Render Pratinjau
+        renderMediaPreview(selectedFile, data);
+        
+        // 2. Tampilkan Detail URL
+        urlDetails.appendChild(createUrlDetail('URL Asli Cloudinary', data.url));
+        
+        if (data.optimizedUrl) {
+          // Jika gambar, tampilkan AVIF dan WEBP
+          if (data.optimizedUrl.avif) {
+            urlDetails.appendChild(createUrlDetail('URL Optimal (AVIF)', data.optimizedUrl.avif));
+            urlDetails.appendChild(createUrlDetail('URL Optimal (WEBP)', data.optimizedUrl.webp));
+          }
+          // Jika video, tampilkan WEBM
+          if (data.optimizedUrl.webm) {
+            urlDetails.appendChild(createUrlDetail('URL Optimal (WEBM)', data.optimizedUrl.webm));
+          }
+        }
+        
+        if (data.cacheUrl) {
+          urlDetails.appendChild(createUrlDetail('Cache URL (wsrv.nl)', data.cacheUrl.wsrv));
+          urlDetails.appendChild(createUrlDetail('Cache URL (i3.wp.com)', data.cacheUrl.wp));
+        }
+        
       } catch (err) {
-        responseBox.textContent = JSON.stringify({ error: true, message: err.message },
-          null,
-          2
-        );
+        // --- Error ---
+        console.error('Error saat upload:', err);
+        displayMessage('error', err.message);
+        responseBox.textContent = JSON.stringify({ error: true, message: err.message }, null, 2);
+      } finally {
+        setLoading(false);
       }
     });
   </script>
 </body>
+
 </html>
